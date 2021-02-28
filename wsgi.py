@@ -14,6 +14,8 @@ from data_handler import stability_data_handler, FQ_data_handler, TUNE_X_data_ha
 
 ##### CONSTANTS ################################################################
 COLORS = ["red", "blue", "green", "orange", "cyan"]
+FIGURE_HEIGHT = 1000
+FIGURE_WIDTH = 1200
 ################################################################################
 
 
@@ -205,9 +207,9 @@ def update_action_plot(*args):
     n_resonances = (actual_max_res - actual_min_res) + 1
     interval = 1 / (n_resonances)
     colorscale = []
-    for i in range(n_resonances):
-        colorscale.append([interval * i, COLORS[i % len(COLORS)]])
-        colorscale.append([interval * (i + 1), COLORS[(i) % len(COLORS)]])
+    for i, j in enumerate(range(actual_min_res, actual_max_res + 1)):
+        colorscale.append([interval * i, COLORS[j % len(COLORS)]])
+        colorscale.append([interval * (i + 1), COLORS[(j) % len(COLORS)]])
 
     fig = go.Figure({
         'data': [{
@@ -235,6 +237,122 @@ def update_action_plot(*args):
         title="Resonance plot - Action space - resonance order in colorbar",
         xaxis_title="X_0",
         yaxis_title="Y_0"
+    )
+    fig.update_layout(width=int(FIGURE_WIDTH))
+    fig.update_layout(height=int(FIGURE_HEIGHT))
+    return fig
+
+
+def filter_01(x, y):
+    mask = np.logical_and(
+        np.logical_and(x >= -0.01, x <= 1.01),
+        np.logical_and(y >= -0.01, y <= 1.01)
+    )
+    return x[mask], y[mask]
+
+@app.callback(
+    Output('fig_frequency', 'figure'),
+    [
+        Input('drop_epsilon', 'value'),         # 0
+        Input('drop_mu', 'value'),              # 1
+        Input('drop_nturns', 'value'),          # 2
+        Input('input_tolerance', 'value'),      # 3
+        Input('input_minres', 'value'),         # 4
+        Input('input_maxres', 'value'),         # 5
+        Input('xtune', 'value'),                # 6
+        Input('ytune', 'value')                 # 7
+    ]
+)
+def update_frequency_plot(*args):
+    parameters = {
+        "mu": args[1],
+        "epsilon": args[0],
+        "turns": args[2],
+    }
+    data_x = TUNE_X_data_handler.get_data(parameters)
+    data_y = TUNE_Y_data_handler.get_data(parameters)
+
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Scattergl(
+            x=data_x.flatten(),
+            y=data_y.flatten(),
+            name="data",
+            mode="markers",
+            marker_color="black"
+        )
+    )
+    x = np.linspace(0, 1, 1000)
+    for i in list(range(args[4], args[5] + 1)):
+        for j in range(1, i):
+            nx = j
+            ny = i - j
+            for q in range(0, i+1):
+                newx, y = filter_01(x, q/ny - nx / ny * x)
+                fig.add_trace(go.Scattergl(
+                    x=newx,
+                    y=y,
+                    mode='lines',
+                    marker_color=COLORS[i % len(COLORS)],
+                    name="Resonance {}".format(i),
+                    showlegend=(True if q == 0 and j == 1 else False),
+                    hoverinfo="skip"
+                ))
+                newx, y = filter_01(x, q/(-ny) - nx / (-ny) * x)
+                fig.add_trace(go.Scattergl(
+                    x=newx,
+                    y=y,
+                    mode='lines',
+                    marker_color=COLORS[i % len(COLORS)],
+                    name="Resonance {} - {} - bis".format(i, q),
+                    showlegend=False,
+                    hoverinfo="skip"
+                ))
+                newx, y = filter_01(x, q/ny - (-nx) / ny * x)
+                fig.add_trace(go.Scattergl(
+                    x=newx,
+                    y=y,
+                    mode='lines',
+                    marker_color=COLORS[i % len(COLORS)],
+                    name="Resonance {} - {} - ter".format(i, q),
+                    showlegend=False,
+                    hoverinfo="skip"
+                ))
+                newx, y = filter_01(x, q/(-ny) - (-nx) / (-ny) * x)
+                fig.add_trace(go.Scattergl(
+                    x=newx,
+                    y=y,
+                    mode='lines',
+                    marker_color=COLORS[i % len(COLORS)],
+                    name="Resonance {} - {} - quater".format(i, q),
+                    showlegend=False,
+                    hoverinfo="skip"
+                ))
+        for j in range(i+1):
+            fig.add_vline(j/i, line_color=COLORS[i % len(COLORS)])
+            fig.add_hline(j/i, line_color=COLORS[i % len(COLORS)])
+
+    fig.add_trace(go.Scattergl(
+        x=x,
+        y=np.ones_like(x) * args[7],
+        name="Working Frequency",
+        mode='lines',
+        line_color="grey",
+        showlegend=True,
+        hoverinfo="skip"
+    ))
+    fig.add_vline(args[6], line_color="grey")
+
+    fig.update_xaxes(range=[0.0, 1.0])
+    fig.update_yaxes(range=[0.0, 1.0])
+    fig.update_layout(width=int(FIGURE_WIDTH))
+    fig.update_layout(height=int(FIGURE_HEIGHT))
+
+    fig.update_layout(
+        title="Resonance plot - Frequency space",
+        xaxis_title="X tune [2pi units]",
+        yaxis_title="Y tune [2pi units]"
     )
 
     return fig
