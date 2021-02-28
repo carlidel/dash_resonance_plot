@@ -21,3 +21,4 @@ plotly
 retrying
 six
 Werkzeug
+matplotlib
