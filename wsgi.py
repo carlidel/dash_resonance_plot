@@ -182,25 +182,15 @@ def update_action_plot(*args):
             nx = j
             ny = i - j
 
-            bool_mask = np.absolute(+ nx * data_x + ny * data_y) < args[3]
+            bool_mask = np.modf(np.absolute(+ nx * data_x + ny * data_y))[0] < args[3]
             data[bool_mask] = i
             extra_data_x[bool_mask] = nx
             extra_data_y[bool_mask] = ny
 
-            bool_mask = np.absolute(+ nx * data_x - ny * data_y) < args[3]
+            bool_mask = np.modf(np.absolute(+ nx * data_x - ny * data_y))[0] < args[3]
             data[bool_mask] = i
             extra_data_x[bool_mask] = nx
-            extra_data_y[bool_mask] = ny
-
-            bool_mask = np.absolute(- nx * data_x + ny * data_y) < args[3]
-            data[bool_mask] = i
-            extra_data_x[bool_mask] = nx
-            extra_data_y[bool_mask] = ny
-
-            bool_mask = np.absolute(- nx * data_x - ny * data_y) < args[3]
-            data[bool_mask] = i
-            extra_data_x[bool_mask] = nx
-            extra_data_y[bool_mask] = ny
+            extra_data_y[bool_mask] = -ny
 
     actual_max_res = int(np.nanmax(data))
     actual_min_res = int(np.nanmin(data))
